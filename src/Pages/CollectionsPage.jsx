@@ -1,6 +1,6 @@
 // src/pages/CollectionsPage.jsx
 import React, { useEffect, useState } from "react";
-import { db } from "../firebase/firebaseConfig"; 
+import { db } from "../Firebase/firebaseConfig"; 
 import { collection, getDocs, query, where } from "firebase/firestore";
 import CollectionCard from "../Components/Product Components/CollectionCard";
 import { Link } from "react-router-dom";
