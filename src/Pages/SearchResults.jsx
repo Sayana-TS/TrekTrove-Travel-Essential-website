@@ -1,13 +1,14 @@
-// src/pages/SearchResults.jsx
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../store/Slices/cartSlice";
 import WishlistButton from "../Components/Common Components/WishlistButton";
 import { FiArrowLeft } from "react-icons/fi";
 import StarRating from "../Components/Common Components/StarRating";
 import { db } from "../Firebase/firebaseConfig";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
+import { addCartItem } from "../Firebase/cart";
+import { showToast } from "../store/Slices/toastSlice"; // 👈 import showToast
 
 const SearchResults = () => {
   const dispatch = useDispatch();
@@ -16,15 +17,30 @@ const SearchResults = () => {
   const queryParams = new URLSearchParams(location.search);
   const queryText = queryParams.get("q")?.toLowerCase() || "";
 
+  const user = useSelector((state) => state.auth.user);
+
   const [filteredItems, setFilteredItems] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // 🔹 Add to cart (Redux + Firebase + Toast)
+  const handleAddToCart = async (product) => {
+    dispatch(addToCart({ ...product, quantity: 1 }));
+
+    if (user) {
+      await addCartItem(user.uid, { ...product, quantity: 1 });
+    }
+
+    // ✅ Show toast after adding to cart
+    dispatch(
+      showToast({ message: `${product.title} added to cart!`, type: "success" })
+    );
+  };
 
   useEffect(() => {
     const fetchProducts = async () => {
       if (!queryText) return;
 
       try {
-        // Fetch all products (Firestore doesn’t support full-text search natively)
         const productsRef = collection(db, "Products");
         const snapshot = await getDocs(productsRef);
 
@@ -33,7 +49,7 @@ const SearchResults = () => {
           ...doc.data(),
         }));
 
-        // Filter manually on client side
+        // 🔹 Client-side search
         const results = allProducts.filter(
           (item) =>
             item.title?.toLowerCase().includes(queryText) ||
@@ -80,6 +96,7 @@ const SearchResults = () => {
               key={item.id}
               className="bg-[#2A2A2A] rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col"
             >
+              {/* Image */}
               <div
                 onClick={() => navigate(`/product/${item.id}`)}
                 className="w-full h-48 overflow-hidden cursor-pointer"
@@ -98,7 +115,7 @@ const SearchResults = () => {
                     <h2 className="font-semibold text-lg text-white">
                       {item.title}
                     </h2>
-                    <StarRating rating={item.rate || 0} />
+                    <StarRating rating={item.rating || 0} />
                   </div>
                   <p className="text-green-400 font-medium mt-1">
                     ₹{item.price}
@@ -112,7 +129,7 @@ const SearchResults = () => {
                 <div className="flex items-center justify-between mt-4">
                   <WishlistButton product={item} />
                   <button
-                    onClick={() => dispatch(addToCart(item))}
+                    onClick={() => handleAddToCart(item)}
                     className="bg-green-500 hover:bg-green-600 px-3 py-2 rounded-full text-sm font-medium transition-all"
                   >
                     Add

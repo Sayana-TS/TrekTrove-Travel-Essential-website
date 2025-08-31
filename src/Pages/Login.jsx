@@ -3,10 +3,14 @@ import { FcGoogle } from "react-icons/fc";
 import { FaApple } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../Firebase/firebaseConfig";
 import { useDispatch } from "react-redux";
 import { setUser } from "../store/Slices/authSlice";
+import { showToast } from "../store/Slices/toastSlice"; // ✅ toast
+
+// Define admin email once at the top
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL.toLowerCase();
 
 const Login = () => {
   const navigate = useNavigate();
@@ -14,37 +18,60 @@ const Login = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      dispatch(showToast({ message: "Please fill in all fields.", type: "error" }));
+      return;
+    }
+
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // fetch Firestore user data
-      const docRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(docRef);
+      const role = user.email.toLowerCase() === ADMIN_EMAIL ? "admin" : "user";
 
-      let fullName = user.displayName || "";
-      if (docSnap.exists()) {
-        fullName = docSnap.data().fullName || fullName;
+      // Ensure Firestore has this user
+      const userRef = doc(db, "Users", user.uid);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          fullName: user.displayName || "",
+          email: user.email,
+          role,
+          createdAt: serverTimestamp(),
+        });
       }
 
+      // Resolve display name
+      let fullName = user.displayName || "";
+      if (userSnap.exists()) {
+        fullName = userSnap.data().fullName || fullName;
+      }
+
+      // Save user in Redux
       dispatch(
         setUser({
           uid: user.uid,
           email: user.email,
           fullName,
+          role,
         })
       );
 
-      navigate("/");
+      // ✅ success toast
+      dispatch(showToast({ message: "Login successful!", type: "success" }));
+
+      // Redirect based on role
+      if (role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
-      setError(err.message);
+      console.error(err);
+      // ✅ error toast
+      dispatch(showToast({ message: err.message || "Login failed.", type: "error" }));
     }
   };
 
@@ -72,8 +99,6 @@ const Login = () => {
             Sign Up
           </span>
         </p>
-
-        {error && <p className="text-red-500 mb-3">{error}</p>}
 
         <input
           type="email"

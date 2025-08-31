@@ -4,9 +4,10 @@ import { FaApple } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../Firebase/firebaseConfig";
 import { setUser } from "../store/Slices/authSlice";
+import { showToast } from "../store/Slices/toastSlice"; // ✅ import toast
 
 const Register = () => {
   const [firstName, setFirstName] = useState("");
@@ -14,46 +15,61 @@ const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleRegister = async () => {
-  if (password !== confirmPassword) {
-    setError("Passwords do not match!");
-    return;
-  }
+    if (password !== confirmPassword) {
+      dispatch(showToast({ message: "Passwords do not match!", type: "error" }));
+      return;
+    }
 
-  try {
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
 
-    const user = userCredential.user;
-    const fullName = `${firstName} ${lastName}`.trim();
+      const user = userCredential.user;
+      const fullName = `${firstName} ${lastName}`.trim();
 
-    // ✅ Update Firebase profile
-    await updateProfile(auth.currentUser, {
-      displayName: fullName,
-    });
+      await updateProfile(auth.currentUser, {
+        displayName: fullName,
+      });
 
-    // ✅ Save user in Redux (force fullName now)
-    dispatch(
-      setUser({
-        uid: user.uid,
+      // Firestore Users collection
+      const adminEmail = import.meta.env.VITE_ADMIN_EMAIL.toLowerCase();
+      const role = user.email.toLowerCase() === adminEmail ? "admin" : "user";
+
+      await setDoc(doc(db, "Users", user.uid), {
+        fullName,
         email: user.email,
-        displayName: fullName, // force inject fullName
-      })
-    );
+        role,
+        createdAt: serverTimestamp(),
+      });
 
-    navigate("/");
-  } catch (err) {
-    setError(err.message);
-  }
-};
+      // Redux store
+      dispatch(
+        setUser({
+          uid: user.uid,
+          email: user.email,
+          displayName: fullName,
+        })
+      );
+
+      // ✅ success toast
+      dispatch(showToast({ message: "Registration successful! Please log in.", type: "success" }));
+
+      navigate("/login");
+    } catch (err) {
+      console.error(err);
+      dispatch(
+        showToast({ message: err.message || "Registration failed.", type: "error" })
+      );
+    }
+  };
 
   return (
     <div className="h-screen flex items-center justify-center bg-[#282928] p-4">
@@ -132,7 +148,6 @@ const Register = () => {
             </span>
           </p>
         </div>
-        {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
 
         <button
           className="w-full bg-[#606b57] transition text-white py-3 rounded mb-4 cursor-pointer"

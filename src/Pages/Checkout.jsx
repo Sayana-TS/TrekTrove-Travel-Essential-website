@@ -3,17 +3,18 @@ import CheckoutForm from "../Components/Cart - Checkout Component/CheckoutForm";
 import OrderSummary from "../Components/Cart - Checkout Component/OrderSummary";
 import PaymentSection from "../Components/Cart - Checkout Component/PaymentSection";
 import GoBackButton from "../Components/Common Components/GoBackButton";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { db } from "../Firebase/firebaseConfig";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-import {clearUserCart} from '../Firebase/cart'
+import { clearUserCart } from "../Firebase/cart";
+import { showToast } from "../store/Slices/toastSlice"; // 👈 import showToast
 
 const Checkout = () => {
   const cartItems = useSelector((state) => state.cart.cartItems);
   const user = useSelector((state) => state.auth.user);
+  const dispatch = useDispatch(); // 👈 add dispatch
   const navigate = useNavigate();
-
 
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cod");
@@ -30,54 +31,67 @@ const Checkout = () => {
   );
 
   const handlePlaceOrder = async (shippingInfo) => {
-  if (!user) {
-    alert("Please login to place an order");
-    return;
-  }
+    if (!user) {
+      dispatch(
+        showToast({ message: "Please login to place an order", type: "error" })
+      );
+      return;
+    }
 
-  // If card payment, ensure all card fields are filled
-  if (
-    paymentMethod === "card" &&
-    (!paymentDetails.cardName ||
-      !paymentDetails.cardNumber ||
-      !paymentDetails.expiry ||
-      !paymentDetails.cvv)
-  ) {
-    alert("Please fill in all card details");
-    return;
-  }
+    // If card payment, ensure all card fields are filled
+    if (
+      paymentMethod === "card" &&
+      (!paymentDetails.cardName ||
+        !paymentDetails.cardNumber ||
+        !paymentDetails.expiry ||
+        !paymentDetails.cvv)
+    ) {
+      dispatch(
+        showToast({ message: "Please fill in all card details", type: "error" })
+      );
+      return;
+    }
 
-  setLoading(true);
-  try {
-    const orderData = {
-      userId: user.uid,
-      items: cartItems,
-      subtotal,
-      shipping: 0,
-      total: subtotal,
-      shippingInfo,
-      paymentMethod,
-      paymentDetails: paymentMethod === "card" ? paymentDetails : {},
-      status: "pending",
-      createdAt: serverTimestamp(),
-    };
+    setLoading(true);
+    try {
+      const orderData = {
+        userId: user.uid,
+        items: cartItems,
+        subtotal,
+        shipping: 0,
+        total: subtotal,
+        shippingInfo,
+        paymentMethod,
+        paymentDetails: paymentMethod === "card" ? paymentDetails : {},
+        status: "pending",
+        createdAt: serverTimestamp(),
+      };
 
-    // Save order to Firestore
-    await addDoc(collection(db, "Orders"), orderData);
+      // Save order to Firestore
+      await addDoc(collection(db, "Orders"), orderData);
 
-    // ✅ Clear user cart after placing the order
-    await clearUserCart(user.uid);
+      // Clear user cart after placing the order
+      await clearUserCart(user.uid);
 
-    alert("Order placed successfully!");
-    navigate("/"); // redirect to homepage or confirmation page
-  } catch (error) {
-    console.error("Error placing order:", error);
-    alert("Something went wrong, try again!");
-  } finally {
-    setLoading(false);
-  }
-};
+      // Success toast
+      dispatch(
+        showToast({ message: "Order placed successfully!", type: "success" })
+      );
+      navigate("/"); // redirect to homepage
+    } catch (error) {
+      console.error("Error placing order:", error);
 
+      // Error toast
+      dispatch(
+        showToast({
+          message: "Something went wrong, try again!",
+          type: "error",
+        })
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#282928] p-6 flex justify-center">

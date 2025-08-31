@@ -1,63 +1,65 @@
-import { useState } from "react";
-import {ChevronRight, ChevronLeft} from 'lucide-react'
-
-const testimonials = [
-  {
-    name: "Aarav Mehta",
-    role: "Verified Traveler",
-    review:
-      "The backpack was a lifesaver on my Europe trip — lightweight and super durable!",
-    image: "https://randomuser.me/api/portraits/men/32.jpg",
-    product:
-      "https://assets.myntassets.com/w_412,q_30,dpr_3,fl_progressive,f_webp/assets/images/13314476/2025/7/11/ebb22c47-7234-4d5e-bdf5-4305cfff51271752230263724-FORCLAZ-By-Decathlon-Unisex-Orche-Mt100-70L-Trekking-Bag-501-1.jpg", // backpack
-  },
-  {
-    name: "Sophia Thomas",
-    role: "Verified Traveler",
-    review:
-      "Absolutely loved the travel pillow I ordered! Made my 12-hour flight so comfortable.",
-    image: "https://randomuser.me/api/portraits/women/44.jpg",
-    product:
-      "https://nutcaseshop.com/cdn/shop/files/NC-CUS-PILLOWTRV-BLUE-007C.jpg?v=1723012742&width=1445", // pillow
-  },
-  {
-    name: "Daniel Williams",
-    role: "Verified Traveler",
-    review:
-      "The waterproof jacket kept me dry through unexpected rainstorms in Thailand. Highly recommend!",
-    image: "https://randomuser.me/api/portraits/men/76.jpg",
-    product:
-      "https://contents.mediadecathlon.com/p2583866/11e22a86dd99b5813e3ddf0450822831/p2583866.jpg", // jacket
-  },
-  {
-    name: "Emma Johnson",
-    role: "Verified Traveler",
-    review:
-      "This travel adapter was a game-changer — worked perfectly in all the countries I visited!",
-    image: "https://randomuser.me/api/portraits/women/12.jpg",
-    product:
-      "https://www.portronics.com/cdn/shop/files/Portronics_Juicemate_20W_Type-C_PD_outlet_adapter.jpg?v=1733224083", // adapter
-  },
-];
+// src/components/Testimonial.jsx
+import { useState, useEffect } from "react";
+import { db } from "../../Firebase/firebaseConfig";
+import {
+  collection,
+  query,
+  getDocs,
+  doc,
+  getDoc,
+  orderBy,
+  limit,
+} from "firebase/firestore";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 
 function Testimonial() {
+  const [reviews, setReviews] = useState([]);
   const [current, setCurrent] = useState(0);
 
+  // Fetch reviews + related product info
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"), limit(10));
+        const querySnap = await getDocs(q);
+
+        const reviewPromises = querySnap.docs.map(async (revDoc) => {
+          const revData = revDoc.data();
+          const productRef = doc(db, "Products", revData.productId);
+          const productSnap = await getDoc(productRef);
+
+          return {
+            id: revDoc.id,
+            ...revData,
+            product: productSnap.exists() ? productSnap.data() : null,
+          };
+        });
+
+        const reviewsWithProducts = await Promise.all(reviewPromises);
+        setReviews(reviewsWithProducts);
+      } catch (err) {
+        console.error("Error fetching testimonials:", err);
+      }
+    };
+
+    fetchReviews();
+  }, []);
+
   const nextSlide = () => {
-    setCurrent((prev) => (prev + 2) % testimonials.length);
+    setCurrent((prev) => (prev + 2) % reviews.length);
   };
 
   const prevSlide = () => {
-    setCurrent((prev) =>
-      prev === 0 ? (testimonials.length - 2) : prev - 2
-    );
+    setCurrent((prev) => (prev === 0 ? reviews.length - 2 : prev - 2));
   };
 
   return (
     <section id="reviews" className="w-full min-h-screen bg-gray-900 text-white px-6 py-20">
       {/* Top Row - Heading + Arrows */}
       <div className="flex justify-between items-center mb-10">
-        <h2 className="text-3xl md:text-4xl font-bold">🌍 Travelers <span className="text-[#91b474] font-style: italic">love us</span></h2>
+        <h2 className="text-3xl md:text-4xl font-bold">
+          🌍 Travelers <span className="text-[#91b474] italic">love us</span>
+        </h2>
         <div className="space-x-3">
           <button
             onClick={prevSlide}
@@ -76,42 +78,50 @@ function Testimonial() {
 
       {/* Reviews Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {testimonials.slice(current, current + 2).map((t, i) => (
+        {reviews.slice(current, current + 2).map((rev) => (
           <div
-            key={i}
+            key={rev.id}
             className="grid grid-cols-1 md:grid-cols-2 bg-gray-800 rounded-2xl overflow-hidden h-[90vh] 
-             shadow-[0_0_25px_rgba(255,255,255,0.15)] border border-gray-600 
-             transition-all duration-500"
+              shadow-[0_0_25px_rgba(255,255,255,0.15)] border border-gray-600 transition-all duration-500"
           >
-            {/* Product Image Card */}
-            <div className="w-full h-full ">
-              <img
-                src={t.product}
-                alt="product"
-                className="w-full h-full object-cover transform transition-transform duration-300 hover:scale-105"
-              />
+            {/* Product Image */}
+            <div className="w-full h-full">
+              {rev.product?.image ? (
+                <img
+                  src={rev.product.image}
+                  alt={rev.product.title}
+                  className="w-full h-full object-cover transform transition-transform duration-300 hover:scale-105"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  No Product Image
+                </div>
+              )}
             </div>
 
             {/* Review Card */}
             <div className="flex flex-col justify-center items-center p-8 text-center bg-gray-900">
-              <img
-                src={t.image}
-                alt={t.name}
-                className="w-20 h-20 rounded-full mb-4 object-cover border-4 border-gray-700"
-              />
-              <h3 className="text-xl font-semibold">{t.name}</h3>
-              <p className="text-sm text-gray-400 mb-3">{t.role}</p>
+              <h3 className="text-xl font-semibold">{rev.userName}</h3>
+              <p className="text-sm text-gray-400 mb-3">Verified Traveler</p>
 
               {/* Stars */}
               <div className="flex justify-center mb-4">
                 {Array(5)
                   .fill()
                   .map((_, i) => (
-                    <span key={i} className="text-yellow-400 text-lg">★</span>
+                    <span
+                      key={i}
+                      className={i < rev.rating ? "text-yellow-400 text-lg" : "text-gray-500 text-lg"}
+                    >
+                      ★
+                    </span>
                   ))}
               </div>
 
-              <p className="text-lg italic max-w-md">"{t.review}"</p>
+              <p className="text-lg italic max-w-md">"{rev.comment}"</p>
+              {rev.product?.title && (
+                <p className="mt-4 text-gray-400 text-sm">– {rev.product.title}</p>
+              )}
             </div>
           </div>
         ))}

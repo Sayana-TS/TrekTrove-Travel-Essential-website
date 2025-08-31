@@ -1,22 +1,44 @@
 // src/pages/admin/ProductManagement.jsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const products = [
-  {
-    id: 1,
-    name: "Travel Backpack",
-    price: 120,
-    stock: 15,
-    category: "Luggage",
-  },
-  { id: 2, name: "Neck Pillow", price: 25, stock: 40, category: "Accessories" },
-  { id: 3, name: "Power Bank", price: 45, stock: 25, category: "Electronics" },
-];
+import { db } from "../../Firebase/firebaseConfig";
+import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 
 const ProductManagement = () => {
+  const [products, setProducts] = useState([]);
   const navigate = useNavigate();
+
+  // Fetch products from Firestore
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "Products"));
+        const productList = querySnapshot.docs.map((doc) => ({
+          id: doc.id, // Firestore document ID
+          ...doc.data(),
+        }));
+        setProducts(productList);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  // Delete product
+  const handleDelete = async (id, name) => {
+    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
+      try {
+        await deleteDoc(doc(db, "Products", id));
+        setProducts(products.filter((product) => product.id !== id)); // update state
+      } catch (error) {
+        console.error("Error deleting product:", error);
+      }
+    }
+  };
+
   return (
     <>
       {/* Header */}
@@ -46,39 +68,46 @@ const ProductManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {products.map((product) => (
-              <tr
-                onClick={() => navigate(`/admin/products/${product.id}`)}
-                key={product.id}
-                className="border-b border-gray-700 hover:bg-[#383838] transition"
-              >
-                <td className="px-6 py-4">{product.name}</td>
-                <td className="px-6 py-4">{product.category}</td>
-                <td className="px-6 py-4">${product.price}</td>
-                <td className="px-6 py-4">{product.stock}</td>
-                <td className="px-6 py-4 flex gap-3">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation(); // prevent row click
-                      navigate(`/admin/products/edit/${product.id}`);
-                    }}
-                    className="text-blue-400 hover:text-blue-500"
-                  >
-                    <Pencil size={18} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation(); // prevent row click
-                      alert(`Delete product ${product.name}`);
-                      // 🔗 Later: call delete API
-                    }}
-                    className="text-red-400 hover:text-red-500"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+            {products.length > 0 ? (
+              products.map((product) => (
+                <tr
+                  onClick={() => navigate(`/admin/products/${product.id}`)}
+                  key={product.id}
+                  className="border-b border-gray-700 hover:bg-[#383838] transition"
+                >
+                  <td className="px-6 py-4">{product.title}</td>
+                  <td className="px-6 py-4">{product.category}</td>
+                  <td className="px-6 py-4">₹{product.price}</td>
+                  <td className="px-6 py-4">{product.countInStock}</td>
+                  <td className="px-6 py-4 flex gap-3">
+                    {/* <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/admin/products/edit/${product.id}`);
+                      }}
+                      className="text-blue-400 hover:text-blue-500"
+                    >
+                      <Pencil size={18} />
+                    </button> */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(product.id, product.name);
+                      }}
+                      className="text-red-400 hover:text-red-500"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="px-6 py-4 text-center text-gray-400">
+                  No products found
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>

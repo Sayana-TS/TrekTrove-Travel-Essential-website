@@ -1,31 +1,59 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import GoBackButton from "../../Components/Common Components/GoBackButton";
+import { db } from "../../Firebase/firebaseConfig";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 const AdminOrderDetail = () => {
   const { orderId } = useParams();
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [order, setOrder] = useState({
-    id: orderId,
-    customer: "John Doe",
-    email: "john@example.com",
-    date: "2025-08-20",
-    address: "123 Main Street, Thrissur, Kerala",
-    items: [
-      { id: 1, name: "Travel Backpack", quantity: 1, price: 2000 },
-      { id: 2, name: "Water Bottle", quantity: 2, price: 500 },
-    ],
-    total: 3000,
-    paymentStatus: "Paid",
-    status: "Pending",
-  });
+  // Fetch order details from Firestore
+  useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        const orderRef = doc(db, "Orders", orderId);
+        const orderSnap = await getDoc(orderRef);
 
-  const handleStatusChange = (e) => setOrder({ ...order, status: e.target.value });
-  const handleUpdate = () => alert(`Order status updated to: ${order.status}`);
+        if (orderSnap.exists()) {
+          setOrder({ id: orderSnap.id, ...orderSnap.data() });
+        } else {
+          console.error("Order not found");
+        }
+      } catch (error) {
+        console.error("Error fetching order:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrder();
+  }, [orderId]);
+
+  // Handle order status update
+  const handleStatusChange = async (e) => {
+    const newStatus = e.target.value;
+    setOrder((prev) => ({ ...prev, status: newStatus }));
+  };
+
+  const handleUpdate = async () => {
+    try {
+      const orderRef = doc(db, "Orders", orderId);
+      await updateDoc(orderRef, { status: order.status });
+      alert(`Order status updated to: ${order.status}`);
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
+  };
+
+  if (loading) return <p className="text-gray-400">Loading order...</p>;
+  if (!order) return <p className="text-red-400">Order not found</p>;
 
   return (
     <>
-    <GoBackButton/>
+      <GoBackButton />
+
       {/* Header */}
       <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
         Order Details
@@ -34,10 +62,14 @@ const AdminOrderDetail = () => {
       {/* Order Info */}
       <div className="bg-[#2A2A2A] p-6 rounded-2xl shadow-lg grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div><span className="font-semibold">Order ID:</span> {order.id}</div>
-        <div><span className="font-semibold">Customer:</span> {order.customer}</div>
-        <div><span className="font-semibold">Email:</span> {order.email}</div>
-        <div><span className="font-semibold">Date:</span> {order.date}</div>
-        <div className="md:col-span-2"><span className="font-semibold">Address:</span> {order.address}</div>
+        <div><span className="font-semibold">Customer:</span> {order.shippingInfo?.fullName}</div>
+        <div><span className="font-semibold">Email:</span> {order.shippingInfo?.email}</div>
+        <div><span className="font-semibold">Date:</span> 
+          {order.createdAt?.toDate
+            ? order.createdAt.toDate().toLocaleString()
+            : "N/A"}
+        </div>
+        <div className="md:col-span-2"><span className="font-semibold">Address:</span> {order.shippingInfo?.address}</div>
       </div>
 
       {/* Items Table */}
@@ -53,14 +85,14 @@ const AdminOrderDetail = () => {
             </tr>
           </thead>
           <tbody>
-            {order.items.map((item, idx) => (
+            {order.items?.map((item, idx) => (
               <tr
-                key={item.id}
+                key={item.id || idx}
                 className={`border-b border-gray-700 transition ${
                   idx % 2 === 0 ? "bg-[#2F2F2F]" : "hover:bg-[#383838]"
                 }`}
               >
-                <td className="px-6 py-4">{item.name}</td>
+                <td className="px-6 py-4">{item.name || item.title}</td>
                 <td className="px-6 py-4">{item.quantity}</td>
                 <td className="px-6 py-4">₹{item.price}</td>
                 <td className="px-6 py-4">₹{item.price * item.quantity}</td>
@@ -77,7 +109,7 @@ const AdminOrderDetail = () => {
               order.paymentStatus === "Paid" ? "text-green-400" : "text-red-400"
             }`}
           >
-            Payment: {order.paymentStatus}
+            Payment: {order.paymentMethod}
           </p>
         </div>
       </div>

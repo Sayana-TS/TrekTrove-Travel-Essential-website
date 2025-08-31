@@ -1,65 +1,91 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Save, Upload } from "lucide-react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { db } from "../../Firebase/firebaseConfig";
+import { collection, getDocs, addDoc } from "firebase/firestore";
 
 const AddProduct = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); // for edit route
-  const location = useLocation();
 
-  // detect mode based on route
-  const isEditMode = location.pathname.includes("/edit");
-
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
-    name: "",
+    title: "",
     category: "",
     price: "",
-    stock: "",
+    countInStock: "",
     description: "",
-    image: null,
+    image: null, // File
   });
-
   const [preview, setPreview] = useState(null);
 
-  // Simulated fetch for edit mode (replace with real API later)
+  // Fetch categories
   useEffect(() => {
-    if (isEditMode && id) {
-      // Example: pretend we fetched this product
-      const existingProduct = {
-        name: "Wireless Headphones",
-        category: "Electronics",
-        price: "49.99",
-        stock: "120",
-        description: "High quality wireless headphones with noise cancellation.",
-        image: "https://via.placeholder.com/150",
-      };
-      setFormData(existingProduct);
-      setPreview(existingProduct.image);
-    }
-  }, [isEditMode, id]);
+    const fetchCategories = async () => {
+      const querySnapshot = await getDocs(collection(db, "Categories"));
+      const categoryList = querySnapshot.docs.map(doc => doc.data().title);
+      setCategories(categoryList);
+    };
+    fetchCategories();
+  }, []);
 
+  // Handle input changes
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-
     if (name === "image" && files.length > 0) {
       const file = files[0];
-      setFormData((prev) => ({ ...prev, image: file }));
+      setFormData(prev => ({ ...prev, image: file }));
       setPreview(URL.createObjectURL(file));
     } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
-  const handleSubmit = (e) => {
+  // Upload image to Cloudinary
+  const uploadImageToCloudinary = async (file) => {
+    if (!file) return null;
+
+    const cloudForm = new FormData();
+    cloudForm.append("file", file);
+    cloudForm.append("upload_preset", "travel_products_unsigned");
+    const folderName = formData.category || "Uncategorized";
+    cloudForm.append("folder", `Travel E-commerce website/Products/${folderName}`);
+
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/dpblgnluu/image/upload",
+      { method: "POST", body: cloudForm }
+    );
+    const data = await res.json();
+    return data.secure_url;
+  };
+
+  // Handle form submit
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isEditMode) {
-      console.log("Updating Product:", id, formData);
-      // 🔗 call update API
-    } else {
-      console.log("New Product:", formData);
-      // 🔗 call create API
+
+    try {
+      // Upload image
+      let imageUrl = null;
+      if (formData.image instanceof File) {
+        imageUrl = await uploadImageToCloudinary(formData.image);
+      }
+
+      const productData = {
+        title: formData.title,
+        category: formData.category,
+        price: Number(formData.price),
+        countInStock: Number(formData.countInStock),
+        description: formData.description,
+        image: imageUrl,
+        rate: 0, // always add rate for new product
+      };
+
+      await addDoc(collection(db, "Products"), productData);
+      alert("Product created successfully!");
+      navigate("/admin/products");
+    } catch (error) {
+      console.error("Error saving product:", error);
+      alert("Something went wrong. Check console for details.");
     }
-    navigate("/admin/products");
   };
 
   return (
@@ -71,11 +97,10 @@ const AddProduct = () => {
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-gray-400 hover:text-white transition"
           >
-            <ArrowLeft size={20} />
-            Back
+            <ArrowLeft size={20} /> Back
           </button>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
-            {isEditMode ? "Edit Product" : "Add New Product"}
+            Add New Product
           </h1>
         </div>
 
@@ -84,36 +109,38 @@ const AddProduct = () => {
           onSubmit={handleSubmit}
           className="bg-[#2a2a2a] border border-gray-700 p-6 rounded-2xl shadow-xl space-y-6"
         >
-          {/* Product Name */}
+          {/* Title */}
           <div>
             <label className="block mb-1 text-gray-300">Product Name</label>
             <input
               type="text"
-              name="name"
-              value={formData.name}
+              name="title"
+              value={formData.title}
               onChange={handleChange}
               placeholder="e.g. Wireless Headphones"
               className="w-full px-4 py-2 rounded-lg bg-[#1e1e1e] text-white outline-none focus:ring-2 focus:ring-green-500 transition-all"
             />
           </div>
 
-          {/* Divider */}
           <hr className="border-gray-700" />
 
           {/* Category */}
           <div>
             <label className="block mb-1 text-gray-300">Category</label>
-            <input
-              type="text"
+            <select
               name="category"
-              value={formData.category}
+              value={formData.category || ""}
               onChange={handleChange}
-              placeholder="e.g. Electronics"
               className="w-full px-4 py-2 rounded-lg bg-[#1e1e1e] text-white outline-none focus:ring-2 focus:ring-green-500 transition-all"
-            />
+            >
+              <option value="">Select Category</option>
+              {categories.map((cat, idx) => (
+                <option key={idx} value={cat}>{cat}</option>
+              ))}
+            </select>
           </div>
 
-          {/* Price & Stock side by side */}
+          {/* Price & Stock */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block mb-1 text-gray-300">Price ($)</label>
@@ -130,8 +157,8 @@ const AddProduct = () => {
               <label className="block mb-1 text-gray-300">Stock Quantity</label>
               <input
                 type="number"
-                name="stock"
-                value={formData.stock}
+                name="countInStock"
+                value={formData.countInStock}
                 onChange={handleChange}
                 placeholder="e.g. 100"
                 className="w-full px-4 py-2 rounded-lg bg-[#1e1e1e] text-white outline-none focus:ring-2 focus:ring-green-500 transition-all"
@@ -139,10 +166,9 @@ const AddProduct = () => {
             </div>
           </div>
 
-          {/* Divider */}
           <hr className="border-gray-700" />
 
-          {/* Image Upload */}
+          {/* Image */}
           <div>
             <label className="block mb-2 text-gray-300">Product Image</label>
             <div className="flex items-center gap-4">
@@ -167,7 +193,6 @@ const AddProduct = () => {
             </div>
           </div>
 
-          {/* Divider */}
           <hr className="border-gray-700" />
 
           {/* Description */}
@@ -180,17 +205,17 @@ const AddProduct = () => {
               placeholder="Write a short description about the product..."
               className="w-full px-4 py-2 rounded-lg bg-[#1e1e1e] text-white outline-none focus:ring-2 focus:ring-green-500 transition-all"
               rows="4"
-            ></textarea>
+            />
           </div>
 
-          {/* Submit Button */}
+          {/* Submit */}
           <div className="flex justify-end">
             <button
               type="submit"
               className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-500 hover:to-emerald-600 px-6 py-2 rounded-lg transition shadow-md transform hover:scale-105"
             >
               <Save size={18} />
-              {isEditMode ? "Update Product" : "Save Product"}
+              Save Product
             </button>
           </div>
         </form>

@@ -3,10 +3,13 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../Firebase/firebaseConfig";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { useDispatch } from "react-redux";
+import { showToast } from "../store/Slices/toastSlice";
 
 const OrderDetail = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -53,33 +56,48 @@ const OrderDetail = () => {
     );
   }
 
-const handleCancelOrder = async (orderId) => {
-  try {
-    const orderRef = doc(db, "Orders", orderId);
-    const orderSnap = await getDoc(orderRef);
+  const handleCancelOrder = async (orderId) => {
+    try {
+      const orderRef = doc(db, "Orders", orderId);
+      const orderSnap = await getDoc(orderRef);
 
-    if (orderSnap.exists()) {
-      const currentStatus = orderSnap.data().status;
+      if (orderSnap.exists()) {
+        const currentStatus = orderSnap.data().status;
 
-      // Optional: prevent canceling delivered orders
-      if (currentStatus === "Delivered") {
-        alert("This order has already been delivered and cannot be cancelled.");
-        return;
+        if (currentStatus === "Delivered") {
+          dispatch(
+            showToast({
+              message:
+                "This order has already been delivered and cannot be cancelled.",
+              type: "error",
+            })
+          );
+          return;
+        }
+
+        await updateDoc(orderRef, {
+          status: "Cancelled",
+        });
+
+        setOrder((prev) => ({ ...prev, status: "Cancelled" }));
+
+        dispatch(
+          showToast({
+            message: "Your order has been cancelled successfully.",
+            type: "success",
+          })
+        );
       }
-
-      await updateDoc(orderRef, {
-        status: "Cancelled",
-      });
-
-      setOrder((prev) => ({ ...prev, status: "Cancelled" }));
-      alert("Your order has been cancelled successfully.");
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      dispatch(
+        showToast({
+          message: "Something went wrong while cancelling the order.",
+          type: "error",
+        })
+      );
     }
-  } catch (error) {
-    console.error("Error cancelling order:", error);
-    alert("Something went wrong while cancelling the order.");
-  }
-};
-
+  };
 
   return (
     <div className="min-h-screen bg-[#282928] text-white p-6">
@@ -142,64 +160,63 @@ const handleCancelOrder = async (orderId) => {
         </p>
 
         {/* Shipping + Payment */}
-<div className="mt-8 grid md:grid-cols-2 gap-6">
-  {/* Shipping Info */}
-  <div className="bg-gradient-to-br from-[#1A1A1A] to-[#262626] p-6 rounded-2xl shadow-lg border border-gray-800">
-    <h3 className="text-lg font-semibold mb-5 flex items-center gap-2 text-yellow-400">
-      📦 Shipping Info
-    </h3>
-    <ul className="space-y-3">
-      <li className="flex justify-between border-b border-gray-700 pb-2">
-        <span className="text-gray-400">Address</span>
-        <span className="font-medium text-white">
-          {order.shippingInfo?.address || "N/A"}
-        </span>
-      </li>
-      <li className="flex justify-between border-b border-gray-700 pb-2">
-        <span className="text-gray-400">City</span>
-        <span className="font-medium text-white">
-          {order.shippingInfo?.city || "N/A"}
-        </span>
-      </li>
-      <li className="flex justify-between border-b border-gray-700 pb-2">
-        <span className="text-gray-400">Zip</span>
-        <span className="font-medium text-white">
-          {order.shippingInfo?.zip || "N/A"}
-        </span>
-      </li>
-      <li className="flex justify-between">
-        <span className="text-gray-400">Phone</span>
-        <span className="font-medium text-white">
-          {order.shippingInfo?.phone || "N/A"}
-        </span>
-      </li>
-    </ul>
-  </div>
+        <div className="mt-8 grid md:grid-cols-2 gap-6">
+          {/* Shipping Info */}
+          <div className="bg-gradient-to-br from-[#1A1A1A] to-[#262626] p-6 rounded-2xl shadow-lg border border-gray-800">
+            <h3 className="text-lg font-semibold mb-5 flex items-center gap-2 text-yellow-400">
+              📦 Shipping Info
+            </h3>
+            <ul className="space-y-3">
+              <li className="flex justify-between border-b border-gray-700 pb-2">
+                <span className="text-gray-400">Address</span>
+                <span className="font-medium text-white">
+                  {order.shippingInfo?.address || "N/A"}
+                </span>
+              </li>
+              <li className="flex justify-between border-b border-gray-700 pb-2">
+                <span className="text-gray-400">City</span>
+                <span className="font-medium text-white">
+                  {order.shippingInfo?.city || "N/A"}
+                </span>
+              </li>
+              <li className="flex justify-between border-b border-gray-700 pb-2">
+                <span className="text-gray-400">Zip</span>
+                <span className="font-medium text-white">
+                  {order.shippingInfo?.zip || "N/A"}
+                </span>
+              </li>
+              <li className="flex justify-between">
+                <span className="text-gray-400">Phone</span>
+                <span className="font-medium text-white">
+                  {order.shippingInfo?.phone || "N/A"}
+                </span>
+              </li>
+            </ul>
+          </div>
 
-  {/* Payment Method */}
-  <div className="bg-gradient-to-br from-[#1A1A1A] to-[#262626] p-6 rounded-2xl shadow-lg border border-gray-800 flex flex-col justify-between">
-    <div>
-      <h3 className="text-lg font-semibold mb-5 flex items-center gap-2 text-yellow-400">
-        💳 Payment Method
-      </h3>
-      <div className="flex items-center justify-between bg-[#2F2F2F] p-3 rounded-lg border border-gray-700">
-        <span className="text-gray-400">Method</span>
-        <span className="text-white font-medium capitalize">
-          {order.paymentMethod}
-        </span>
-      </div>
-    </div>
+          {/* Payment Method */}
+          <div className="bg-gradient-to-br from-[#1A1A1A] to-[#262626] p-6 rounded-2xl shadow-lg border border-gray-800 flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-5 flex items-center gap-2 text-yellow-400">
+                💳 Payment Method
+              </h3>
+              <div className="flex items-center justify-between bg-[#2F2F2F] p-3 rounded-lg border border-gray-700">
+                <span className="text-gray-400">Method</span>
+                <span className="text-white font-medium capitalize">
+                  {order.paymentMethod}
+                </span>
+              </div>
+            </div>
 
-    {/* Cancel Order Button */}
-    <button
-      onClick={() => handleCancelOrder(order.id)}
-      className="mt-6 w-full py-2 cursor-pointer px-4 bg-gradient-to-r from-red-600 to-red-700 hover:opacity-90 transition rounded-lg font-semibold text-white shadow-md"
-    >
-       Cancel Order
-    </button>
-  </div>
-</div>
-
+            {/* Cancel Order Button */}
+            <button
+              onClick={() => handleCancelOrder(order.id)}
+              className="mt-6 w-full py-2 cursor-pointer px-4 bg-gradient-to-r from-red-600 to-red-700 hover:opacity-90 transition rounded-lg font-semibold text-white shadow-md"
+            >
+              Cancel Order
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

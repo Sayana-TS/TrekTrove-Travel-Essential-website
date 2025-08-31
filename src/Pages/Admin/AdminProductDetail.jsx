@@ -1,30 +1,66 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Pencil, Trash2 } from "lucide-react";
+import { doc, getDoc, deleteDoc } from "firebase/firestore";
+import { db } from "../../Firebase/firebaseConfig";
 import GoBackButton from "../../Components/Common Components/GoBackButton";
 
 const AdminProductDetail = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
 
-  const [product, setProduct] = useState({
-    id: productId,
-    name: "Travel Backpack",
-    category: "Luggage",
-    price: 120,
-    stock: 15,
-    description: "Durable travel backpack, perfect for trips.",
-    image: "https://www.yourprint.in/new-admin-ajax.php?action=resize_outer_image&cfcache=all&url=med-s3/yP-mplace/Bags/Back_Packs/YPB07YYG5G31_1.jpg&resizeTo=600",
-  });
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleDelete = () => {
-    alert(`Product ${product.name} deleted`);
-    navigate("/admin/products");
+  // Fetch product details from Firestore
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const productRef = doc(db, "Products", productId);
+        const productSnap = await getDoc(productRef);
+
+        if (productSnap.exists()) {
+          setProduct({ id: productSnap.id, ...productSnap.data() });
+        } else {
+          console.error("Product not found");
+        }
+      } catch (error) {
+        console.error("Error fetching product:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [productId]);
+
+  // Delete product from Firestore
+  const handleDelete = async () => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this product?");
+    if (!confirmDelete) return;
+
+    try {
+      await deleteDoc(doc(db, "Products", productId));
+      alert("Product deleted successfully");
+      navigate("/admin/products");
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert("Failed to delete product. Try again!");
+    }
   };
+
+  if (loading) {
+    return <p className="text-white text-center">Loading product details...</p>;
+  }
+
+  if (!product) {
+    return <p className="text-red-500 text-center">Product not found</p>;
+  }
 
   return (
     <>
-    <GoBackButton/>
+      <GoBackButton />
+
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <h1 className="text-4xl font-extrabold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent mb-4 md:mb-0">
@@ -66,10 +102,10 @@ const AdminProductDetail = () => {
               {product.category}
             </p>
             <p>
-              <span className="font-semibold text-gray-400">Price:</span> ${product.price}
+              <span className="font-semibold text-gray-400">Price:</span> ₹{product.price}
             </p>
             <p>
-              <span className="font-semibold text-gray-400">Stock:</span> {product.stock}
+              <span className="font-semibold text-gray-400">Stock:</span> {product.countInStock}
             </p>
             <p>
               <span className="font-semibold text-gray-400">Description:</span>{" "}

@@ -1,4 +1,3 @@
-// src/pages/Products.jsx
 import { useParams, useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import { db } from "../Firebase/firebaseConfig";
@@ -7,6 +6,7 @@ import ReviewSection from "../Components/Layout Components/ReviewSection";
 import StarRating from "../Components/Common Components/StarRating";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../store/Slices/cartSlice";
+import { showToast } from "../store/Slices/toastSlice"; // 👈 import showToast
 import GoBackButton from "../Components/Common Components/GoBackButton";
 import { addCartItem, updateCartQuantity } from "../Firebase/cart";
 
@@ -38,7 +38,7 @@ const Products = () => {
     return () => unsubscribe();
   }, [productId]);
 
-  // Add to cart handler
+  // Add to cart handler with toast
   const handleAddToCart = async (product) => {
     const item = {
       id: product.id,
@@ -48,12 +48,24 @@ const Products = () => {
       quantity,
     };
 
-    dispatch(addToCart(item));
+    try {
+      dispatch(addToCart(item));
 
-    if (user) {
-      // Check if item already exists in cart
-      const existingItem = await addCartItem(user.uid, item); // addCartItem will overwrite, we can adjust later
-      await updateCartQuantity(user.uid, item.id, item.quantity);
+      if (user) {
+        await addCartItem(user.uid, item); // add/update in Firebase
+        await updateCartQuantity(user.uid, item.id, item.quantity);
+      }
+
+      // Success toast
+      dispatch(
+        showToast({ message: `${product.title} added to cart!`, type: "success" })
+      );
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      // Error toast
+      dispatch(
+        showToast({ message: "Failed to add item to cart", type: "error" })
+      );
     }
   };
 
@@ -103,9 +115,7 @@ const Products = () => {
               ? productData.rate.toFixed(1)
               : "No rating yet"}
           </p>
-          <p className="text-xl font-semibold text-white">
-            ₹{productData.price}
-          </p>
+          <p className="text-xl font-semibold text-white">₹{productData.price}</p>
           <p
             className={
               productData.countInStock > 0 ? "text-green-600" : "text-red-600"

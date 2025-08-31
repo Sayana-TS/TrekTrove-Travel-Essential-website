@@ -5,7 +5,8 @@ import { removeFromWishlist, addToWishlist, clearWishlist } from "../store/Slice
 import { Heart, ShoppingCart } from "lucide-react";
 import { useEffect } from "react";
 import { getWishlistItems, addWishlistItem, removeWishlistItem } from "../Firebase/wishlist";
-import {addCartItem} from '../Firebase/cart'
+import { addCartItem } from '../Firebase/cart';
+import { showToast } from "../store/Slices/toastSlice"; // ✅ import toast
 
 const Wishlist = () => {
   const wishlist = useSelector((state) => state.wishlist);
@@ -22,20 +23,38 @@ const Wishlist = () => {
   }, [user, dispatch]);
 
   const handleAddToCart = async (item) => {
-  dispatch(addToCart(item)); // redux
-  if (user) {
-    await addCartItem(user.uid, { ...item, quantity: 1 });
-  }
-};
+    dispatch(addToCart(item)); // redux
+    if (user) {
+      await addCartItem(user.uid, { ...item, quantity: 1 });
+    }
+    dispatch(
+      showToast({
+        message: `${item.name || item.title} added to cart`,
+        type: "success",
+      })
+    );
+  };
 
-  const handleRemove = async (id) => {
+  const handleRemove = async (id, name) => {
     if (user) await removeWishlistItem(user.uid, id);
     dispatch(removeFromWishlist(id));
+    dispatch(
+      showToast({
+        message: `${name} removed from wishlist`,
+        type: "success",
+      })
+    );
   };
 
   const handleAddToWishlist = async (item) => {
     if (user) await addWishlistItem(user.uid, item);
     dispatch(addToWishlist(item));
+    dispatch(
+      showToast({
+        message: `${item.name || item.title} added to wishlist`,
+        type: "success",
+      })
+    );
   };
 
   return (
@@ -59,11 +78,17 @@ const Wishlist = () => {
                 <p className="text-green-400 font-medium">₹{item.price}</p>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => handleRemove(item.id)} className="flex items-center gap-1 bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full text-sm font-medium transition-all">
+                <button 
+                  onClick={() => handleRemove(item.id, item.name || item.title)} 
+                  className="flex items-center gap-1 bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
+                >
                   <Heart className="w-4 h-4 fill-white" />
                   Remove
                 </button>
-                <button onClick={() => handleAddToCart(item)} className="flex items-center gap-1 bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-full text-sm font-medium transition-all">
+                <button 
+                  onClick={() => handleAddToCart(item)} 
+                  className="flex items-center gap-1 bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
+                >
                   <ShoppingCart className="w-4 h-4" />
                   Add
                 </button>

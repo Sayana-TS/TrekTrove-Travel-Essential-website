@@ -9,14 +9,27 @@ import {
   FiChevronLeft,
 } from "react-icons/fi";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
+import { getAuth, signOut } from "firebase/auth";
 
 const AdminLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const auth = getAuth();
 
   // detect active tab from path
   const activePath = location.pathname;
+
+  // Logout handler
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate("/login"); // redirect to login page after logout
+    } catch (error) {
+      console.error("Logout failed:", error);
+      alert("Logout failed. Try again.");
+    }
+  };
 
   return (
     <div className="flex h-[calc(100vh-5.5rem)] bg-[#282928] text-gray-100">
@@ -78,7 +91,10 @@ const AdminLayout = () => {
 
         {/* Footer */}
         <div className="p-4 border-t border-gray-700">
-          <button className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-[#3a3a3a]">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-[#3a3a3a]"
+          >
             <FiLogOut size={20} />
             {!isCollapsed && <span>Logout</span>}
           </button>

@@ -15,6 +15,7 @@ import {
   removeCartItem,
   updateCartQuantity,
 } from "../Firebase/cart";
+import { showToast } from "../store/Slices/toastSlice"; // ✅ import toast
 
 const CartPage = () => {
   const cartItems = useSelector((state) => state.cart.cartItems);
@@ -51,6 +52,12 @@ const CartPage = () => {
   const handleRemove = async (item) => {
     dispatch(removeFromCart(item.id));
     if (user) await removeCartItem(user.uid, item.id);
+    dispatch(
+      showToast({
+        message: `${item.name || item.title} removed from cart`,
+        type: "success",
+      })
+    );
   };
 
   // Calculate subtotal
@@ -89,12 +96,12 @@ const CartPage = () => {
                     alt={item.title || item.name}
                     className="w-20 h-20 object-cover rounded"
                   />
-                  <div>
+                  {/* <div>
                     <h2 className="font-medium text-white">{item.name}</h2>
                     <p className="text-sm text-gray-400">
                       Estimated delivery: Aug 25 - Aug 27
                     </p>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Price */}
