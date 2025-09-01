@@ -46,12 +46,21 @@ function Testimonial() {
   }, []);
 
   const nextSlide = () => {
-    setCurrent((prev) => (prev + 2) % reviews.length);
-  };
+  if (reviews.length === 0) return;
+  setCurrent((prev) => {
+    const nextIndex = prev + 2;
+    return nextIndex >= reviews.length ? 0 : nextIndex;
+  });
+};
 
-  const prevSlide = () => {
-    setCurrent((prev) => (prev === 0 ? reviews.length - 2 : prev - 2));
-  };
+const prevSlide = () => {
+  if (reviews.length === 0) return;
+  setCurrent((prev) => {
+    const prevIndex = prev - 2;
+    return prevIndex < 0 ? (reviews.length % 2 === 0 ? reviews.length - 2 : reviews.length - 1) : prevIndex;
+  });
+};
+
 
   return (
     <section id="reviews" className="w-full min-h-screen bg-gray-900 text-white px-6 py-20">

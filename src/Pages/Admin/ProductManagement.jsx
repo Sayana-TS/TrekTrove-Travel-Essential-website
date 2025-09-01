@@ -1,13 +1,16 @@
 // src/pages/admin/ProductManagement.jsx
 import React, { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../../Firebase/firebaseConfig";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../store/Slices/toastSlice"; // ✅ toast
 
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   // Fetch products from Firestore
   useEffect(() => {
@@ -15,33 +18,35 @@ const ProductManagement = () => {
       try {
         const querySnapshot = await getDocs(collection(db, "Products"));
         const productList = querySnapshot.docs.map((doc) => ({
-          id: doc.id, // Firestore document ID
+          id: doc.id, 
           ...doc.data(),
         }));
         setProducts(productList);
       } catch (error) {
         console.error("Error fetching products:", error);
+        dispatch(showToast({ message: "Failed to fetch products.", type: "error" }));
       }
     };
 
     fetchProducts();
-  }, []);
+  }, [dispatch]);
 
   // Delete product
   const handleDelete = async (id, name) => {
     if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
       try {
         await deleteDoc(doc(db, "Products", id));
-        setProducts(products.filter((product) => product.id !== id)); // update state
+        setProducts(products.filter((product) => product.id !== id)); 
+        dispatch(showToast({ message: `"${name}" deleted successfully.`, type: "success" }));
       } catch (error) {
         console.error("Error deleting product:", error);
+        dispatch(showToast({ message: `Failed to delete "${name}".`, type: "error" }));
       }
     }
   };
 
   return (
     <>
-      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-green-400">
           Product Management
@@ -55,7 +60,6 @@ const ProductManagement = () => {
         </button>
       </div>
 
-      {/* Products Table */}
       <div className="bg-[#2a2a2a] shadow-md rounded-lg overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead className="bg-[#333] text-gray-300">
@@ -80,19 +84,10 @@ const ProductManagement = () => {
                   <td className="px-6 py-4">₹{product.price}</td>
                   <td className="px-6 py-4">{product.countInStock}</td>
                   <td className="px-6 py-4 flex gap-3">
-                    {/* <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/admin/products/edit/${product.id}`);
-                      }}
-                      className="text-blue-400 hover:text-blue-500"
-                    >
-                      <Pencil size={18} />
-                    </button> */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(product.id, product.name);
+                        handleDelete(product.id, product.title); // ✅ pass title for toast
                       }}
                       className="text-red-400 hover:text-red-500"
                     >

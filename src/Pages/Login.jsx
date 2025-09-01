@@ -130,7 +130,7 @@ const Login = () => {
           Log In
         </button>
 
-        <div className="text-center mb-2 text-sm text-gray-400">
+        {/* <div className="text-center mb-2 text-sm text-gray-400">
           Or log in with
         </div>
 
@@ -141,7 +141,7 @@ const Login = () => {
           <button className="w-full bg-white text-black py-2 rounded flex items-center justify-center gap-2 cursor-pointer hover:bg-[#e6ebe4]">
             <FaApple size={22} /> Apple
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

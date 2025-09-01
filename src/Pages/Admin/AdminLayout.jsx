@@ -1,4 +1,3 @@
-// src/layouts/AdminLayout.jsx
 import React, { useState } from "react";
 import {
   FiUsers,
@@ -10,24 +9,27 @@ import {
 } from "react-icons/fi";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../store/Slices/toastSlice"; // adjust path if needed
 
 const AdminLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const auth = getAuth();
+  const dispatch = useDispatch();
 
-  // detect active tab from path
   const activePath = location.pathname;
 
   // Logout handler
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      dispatch(showToast({ message: "Logged out successfully", type: "success" }));
       navigate("/login"); // redirect to login page after logout
     } catch (error) {
       console.error("Logout failed:", error);
-      alert("Logout failed. Try again.");
+      dispatch(showToast({ message: "Logout failed. Try again!", type: "error" }));
     }
   };
 
@@ -103,7 +105,7 @@ const AdminLayout = () => {
 
       {/* Main content */}
       <main className="flex-1 p-6 overflow-y-auto">
-        <Outlet /> {/* renders the child page (dashboard/products/orders) */}
+        <Outlet />
       </main>
     </div>
   );

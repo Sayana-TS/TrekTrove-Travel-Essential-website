@@ -1,18 +1,21 @@
+// src/pages/admin/AdminProductDetail.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Pencil, Trash2 } from "lucide-react";
 import { doc, getDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../Firebase/firebaseConfig";
 import GoBackButton from "../../Components/Common Components/GoBackButton";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../store/Slices/toastSlice"; // ✅ toast
 
 const AdminProductDetail = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch product details from Firestore
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -22,40 +25,35 @@ const AdminProductDetail = () => {
         if (productSnap.exists()) {
           setProduct({ id: productSnap.id, ...productSnap.data() });
         } else {
-          console.error("Product not found");
+          dispatch(showToast({ message: "Product not found", type: "error" }));
         }
       } catch (error) {
         console.error("Error fetching product:", error);
+        dispatch(showToast({ message: "Failed to fetch product", type: "error" }));
       } finally {
         setLoading(false);
       }
     };
 
     fetchProduct();
-  }, [productId]);
+  }, [productId, dispatch]);
 
-  // Delete product from Firestore
   const handleDelete = async () => {
     const confirmDelete = window.confirm("Are you sure you want to delete this product?");
     if (!confirmDelete) return;
 
     try {
       await deleteDoc(doc(db, "Products", productId));
-      alert("Product deleted successfully");
+      dispatch(showToast({ message: `"${product.title}" deleted successfully!`, type: "success" }));
       navigate("/admin/products");
     } catch (error) {
       console.error("Error deleting product:", error);
-      alert("Failed to delete product. Try again!");
+      dispatch(showToast({ message: "Failed to delete product. Try again!", type: "error" }));
     }
   };
 
-  if (loading) {
-    return <p className="text-white text-center">Loading product details...</p>;
-  }
-
-  if (!product) {
-    return <p className="text-red-500 text-center">Product not found</p>;
-  }
+  if (loading) return <p className="text-white text-center">Loading product details...</p>;
+  if (!product) return <p className="text-red-500 text-center">Product not found</p>;
 
   return (
     <>
@@ -67,12 +65,12 @@ const AdminProductDetail = () => {
           Product Details
         </h1>
         <div className="flex gap-3">
-          <button
+          {/* <button
             onClick={() => navigate(`/admin/products/edit/${product.id}`)}
             className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 transition shadow-md transform hover:scale-105"
           >
             <Pencil size={18} /> Edit
-          </button>
+          </button> */}
           <button
             onClick={handleDelete}
             className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 transition shadow-md transform hover:scale-105"
@@ -88,7 +86,7 @@ const AdminProductDetail = () => {
         <div className="flex-shrink-0 w-full md:w-80 h-80 rounded-2xl overflow-hidden shadow-lg transform hover:scale-105 transition duration-300">
           <img
             src={product.image}
-            alt={product.name}
+            alt={product.title}
             className="w-full h-full object-cover"
           />
         </div>
@@ -96,7 +94,7 @@ const AdminProductDetail = () => {
         {/* Product Details */}
         <div className="flex-1 flex flex-col justify-between text-white space-y-4">
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold">{product.name}</h2>
+            <h2 className="text-2xl font-bold">{product.title}</h2>
             <p>
               <span className="font-semibold text-gray-400">Category:</span>{" "}
               {product.category}

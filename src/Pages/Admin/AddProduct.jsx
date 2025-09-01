@@ -1,11 +1,15 @@
+// src/pages/admin/AddProduct.jsx
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Save, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../../Firebase/firebaseConfig";
 import { collection, getDocs, addDoc } from "firebase/firestore";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../store/Slices/toastSlice"; // ✅ toast
 
 const AddProduct = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
@@ -14,21 +18,24 @@ const AddProduct = () => {
     price: "",
     countInStock: "",
     description: "",
-    image: null, // File
+    image: null,
   });
   const [preview, setPreview] = useState(null);
 
-  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
-      const querySnapshot = await getDocs(collection(db, "Categories"));
-      const categoryList = querySnapshot.docs.map(doc => doc.data().title);
-      setCategories(categoryList);
+      try {
+        const querySnapshot = await getDocs(collection(db, "Categories"));
+        const categoryList = querySnapshot.docs.map(doc => doc.data().title);
+        setCategories(categoryList);
+      } catch (err) {
+        console.error(err);
+        dispatch(showToast({ message: "Failed to fetch categories.", type: "error" }));
+      }
     };
     fetchCategories();
-  }, []);
+  }, [dispatch]);
 
-  // Handle input changes
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "image" && files.length > 0) {
@@ -40,10 +47,8 @@ const AddProduct = () => {
     }
   };
 
-  // Upload image to Cloudinary
   const uploadImageToCloudinary = async (file) => {
     if (!file) return null;
-
     const cloudForm = new FormData();
     cloudForm.append("file", file);
     cloudForm.append("upload_preset", "travel_products_unsigned");
@@ -58,12 +63,10 @@ const AddProduct = () => {
     return data.secure_url;
   };
 
-  // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      // Upload image
       let imageUrl = null;
       if (formData.image instanceof File) {
         imageUrl = await uploadImageToCloudinary(formData.image);
@@ -76,15 +79,16 @@ const AddProduct = () => {
         countInStock: Number(formData.countInStock),
         description: formData.description,
         image: imageUrl,
-        rate: 0, // always add rate for new product
+        rate: 0,
       };
 
       await addDoc(collection(db, "Products"), productData);
-      alert("Product created successfully!");
+
+      dispatch(showToast({ message: `"${formData.title}" added successfully!`, type: "success" })); // ✅ toast
       navigate("/admin/products");
     } catch (error) {
       console.error("Error saving product:", error);
-      alert("Something went wrong. Check console for details.");
+      dispatch(showToast({ message: "Failed to add product.", type: "error" })); // ✅ toast
     }
   };
 
@@ -121,8 +125,6 @@ const AddProduct = () => {
               className="w-full px-4 py-2 rounded-lg bg-[#1e1e1e] text-white outline-none focus:ring-2 focus:ring-green-500 transition-all"
             />
           </div>
-
-          <hr className="border-gray-700" />
 
           {/* Category */}
           <div>
@@ -166,8 +168,6 @@ const AddProduct = () => {
             </div>
           </div>
 
-          <hr className="border-gray-700" />
-
           {/* Image */}
           <div>
             <label className="block mb-2 text-gray-300">Product Image</label>
@@ -192,8 +192,6 @@ const AddProduct = () => {
               )}
             </div>
           </div>
-
-          <hr className="border-gray-700" />
 
           {/* Description */}
           <div>

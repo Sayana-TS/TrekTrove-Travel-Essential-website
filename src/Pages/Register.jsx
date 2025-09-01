@@ -156,18 +156,18 @@ const Register = () => {
           Create account
         </button>
 
-        <div className="text-center mb-2 text-sm text-gray-400">
+        {/* <div className="text-center mb-2 text-sm text-gray-400">
           Or register with
-        </div>
+        </div> */}
 
-        <div className="flex gap-4">
+        {/* <div className="flex gap-4">
           <button className="w-full bg-white text-black py-2 rounded flex items-center justify-center gap-2 cursor-pointer hover:bg-[#e6ebe4] transition-colors duration-300 ease-in-out">
             <FcGoogle size={22} /> Google
           </button>
           <button className="w-full bg-white text-black py-2 rounded flex items-center justify-center gap-2 cursor-pointer hover:bg-[#e6ebe4] transition-colors duration-300 ease-in-out">
             <FaApple size={22} /> Apple
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

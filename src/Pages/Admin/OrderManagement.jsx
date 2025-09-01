@@ -4,12 +4,14 @@ import { Eye, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../../Firebase/firebaseConfig";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../store/Slices/toastSlice"; // ✅ toast
 
 const OrderManagement = () => {
   const [orders, setOrders] = useState([]);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  // Fetch orders from Firestore
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -21,19 +23,24 @@ const OrderManagement = () => {
         setOrders(ordersData);
       } catch (error) {
         console.error("Error fetching orders: ", error);
+        dispatch(showToast({ message: "Failed to fetch orders", type: "error" }));
       }
     };
 
     fetchOrders();
-  }, []);
+  }, [dispatch]);
 
-  // Delete order from Firestore
   const handleDelete = async (id) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this order?");
+    if (!confirmDelete) return;
+
     try {
       await deleteDoc(doc(db, "Orders", id));
       setOrders((prev) => prev.filter((order) => order.id !== id));
+      dispatch(showToast({ message: `Order #${id} deleted successfully!`, type: "success" }));
     } catch (error) {
       console.error("Error deleting order: ", error);
+      dispatch(showToast({ message: `Failed to delete order #${id}`, type: "error" }));
     }
   };
 
@@ -66,9 +73,7 @@ const OrderManagement = () => {
                 >
                   <td className="px-6 py-4">#{order.id}</td>
                   <td className="px-6 py-4">{order.shippingInfo.fullName}</td>
-                  <td className="px-6 py-4">{order.createdAt?.toDate
-    ? order.createdAt.toDate().toLocaleDateString()
-    : "N/A"}</td>
+                  <td className="px-6 py-4">{order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : "N/A"}</td>
                   <td className="px-6 py-4">₹{order.total}</td>
                   <td className="px-6 py-4">{order.status}</td>
                   <td className="px-6 py-4 flex gap-3">

@@ -3,13 +3,15 @@ import { useParams } from "react-router-dom";
 import GoBackButton from "../../Components/Common Components/GoBackButton";
 import { db } from "../../Firebase/firebaseConfig";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../store/Slices/toastSlice";
 
 const AdminOrderDetail = () => {
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
 
-  // Fetch order details from Firestore
   useEffect(() => {
     const fetchOrder = async () => {
       try {
@@ -20,19 +22,20 @@ const AdminOrderDetail = () => {
           setOrder({ id: orderSnap.id, ...orderSnap.data() });
         } else {
           console.error("Order not found");
+          dispatch(showToast({ message: "Order not found", type: "error" }));
         }
       } catch (error) {
         console.error("Error fetching order:", error);
+        dispatch(showToast({ message: "Failed to fetch order details", type: "error" }));
       } finally {
         setLoading(false);
       }
     };
 
     fetchOrder();
-  }, [orderId]);
+  }, [orderId, dispatch]);
 
-  // Handle order status update
-  const handleStatusChange = async (e) => {
+  const handleStatusChange = (e) => {
     const newStatus = e.target.value;
     setOrder((prev) => ({ ...prev, status: newStatus }));
   };
@@ -41,9 +44,10 @@ const AdminOrderDetail = () => {
     try {
       const orderRef = doc(db, "Orders", orderId);
       await updateDoc(orderRef, { status: order.status });
-      alert(`Order status updated to: ${order.status}`);
+      dispatch(showToast({ message: `Order status updated to: ${order.status}`, type: "success" }));
     } catch (error) {
       console.error("Error updating status:", error);
+      dispatch(showToast({ message: "Failed to update order status", type: "error" }));
     }
   };
 
@@ -53,8 +57,6 @@ const AdminOrderDetail = () => {
   return (
     <>
       <GoBackButton />
-
-      {/* Header */}
       <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
         Order Details
       </h1>
@@ -104,11 +106,7 @@ const AdminOrderDetail = () => {
         {/* Summary */}
         <div className="mt-6 flex flex-col md:flex-row justify-between items-start md:items-center">
           <p className="font-semibold text-lg">Total: ₹{order.total}</p>
-          <p
-            className={`font-semibold ${
-              order.paymentStatus === "Paid" ? "text-green-400" : "text-red-400"
-            }`}
-          >
+          <p className={`font-semibold ${order.paymentStatus === "Paid" ? "text-green-400" : "text-red-400"}`}>
             Payment: {order.paymentMethod}
           </p>
         </div>

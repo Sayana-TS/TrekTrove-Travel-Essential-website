@@ -1,6 +1,6 @@
-// src/pages/admin/AdminDashboard.jsx
 import React, { useEffect, useState } from "react";
-import { FiUsers, FiPackage, FiShoppingCart } from "react-icons/fi";
+import { MdPeople, MdShoppingBasket } from "react-icons/md";
+import { BiPackage } from "react-icons/bi";
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { db } from "../../Firebase/firebaseConfig";
 import StatsCard from "../../Components/Admin Component/StatsCard";
@@ -12,24 +12,19 @@ const AdminDashboard = () => {
   const [ordersCount, setOrdersCount] = useState(0);
   const [recentOrders, setRecentOrders] = useState([]);
 
-  // Fetch counts and recent orders
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Users count
         const usersSnap = await getDocs(collection(db, "Users"));
         setUsersCount(usersSnap.size);
 
-        // Products count
         const productsSnap = await getDocs(collection(db, "Products"));
         setProductsCount(productsSnap.size);
 
-        // Orders count + recent orders
         const ordersRef = collection(db, "Orders");
         const ordersSnap = await getDocs(ordersRef);
         setOrdersCount(ordersSnap.size);
 
-        // Recent orders (limit 5, ordered by timestamp if available)
         const q = query(ordersRef, orderBy("createdAt", "desc"), limit(5));
         const recentSnap = await getDocs(q);
         const ordersList = recentSnap.docs.map((doc) => ({
@@ -54,19 +49,19 @@ const AdminDashboard = () => {
       {/* Stats Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <StatsCard
-          icon={FiUsers}
+          icon={MdPeople}
           title="Users"
           value={usersCount}
           color="bg-purple-600"
         />
         <StatsCard
-          icon={FiPackage}
+          icon={BiPackage}
           title="Products"
           value={productsCount}
           color="bg-blue-600"
         />
         <StatsCard
-          icon={FiShoppingCart}
+          icon={MdShoppingBasket}
           title="Orders"
           value={ordersCount}
           color="bg-green-600"

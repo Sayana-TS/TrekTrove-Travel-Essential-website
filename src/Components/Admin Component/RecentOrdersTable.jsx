@@ -1,6 +1,8 @@
 import React from "react";
 
 const RecentOrdersTable = ({ orders }) => {
+  const recentOrders = orders.slice(0, 7); // only show the latest 7 orders
+
   return (
     <div className="bg-[#2A2A2A] rounded-xl shadow-md p-6 mt-6">
       <h2 className="text-lg font-semibold text-white mb-4">Recent Orders</h2>
@@ -14,8 +16,8 @@ const RecentOrdersTable = ({ orders }) => {
           </tr>
         </thead>
         <tbody>
-          {orders.length > 0 ? (
-            orders.map((order) => (
+          {recentOrders.length > 0 ? (
+            recentOrders.map((order) => (
               <tr key={order.id} className="border-b border-gray-800">
                 <td className="py-2">{order.id}</td>
                 <td className="py-2">{order.shippingInfo.fullName || "N/A"}</td>
